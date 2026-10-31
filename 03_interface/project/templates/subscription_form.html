@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% from 'macros.html' import csrf,field,picker,product_lines with context %}
+{% block content %}
+<div class="page-heading">
+<div>
+<a class="back-link" href="{{ url_for('subscriptions.list_subscriptions') }}">← Subscriptions</a>
+<h1>Build the next relationship.</h1>
+<p class="muted">Start with a plan, add your products, and prepare a quotation.</p>
+</div>
+</div>
+<form method="post" class="card form-card">{{ csrf() }}<h2>Subscription details</h2>
+<div class="form-grid">{% if g.user.role!='customer' %}{{ picker('customer_id','Customer',choices.customers,false) }}{% endif %}{{ picker('template_id','Quotation template (optional)',choices.templates) }}{{ picker('plan_id','Plan',choices.plans) }}{{ field('start_date','Start date','date',today) }}{{ field('expiry_date','Expiry date','date',next_year) }}{{ field('payment_days','Payment due in (days)','number',14,min=0,max=365) }}</div>
+<p class="help">A template supplies its own plan and product lines, replacing the selections below. The plan fee is charged once per cycle, in addition to product prices.</p>
+<div class="plan-options">{% for plan in choices.plans %}<span>
+<strong>{{ plan.name }}</strong> {{ plan.price|money }} / {{ plan.interval }} · min {{ plan.min_quantity }} units</span>{% endfor %}</div>
+<hr>
+<h2>Product lines</h2>{{ product_lines(choices) }}<div class="form-actions">
+<a class="button secondary" href="{{ url_for('subscriptions.list_subscriptions') }}">Cancel</a>
+<button class="button">{{ 'Request quotation' if g.user.role=='customer' else 'Create draft' }} →</button>
+</div>
+</form>{% endblock %}

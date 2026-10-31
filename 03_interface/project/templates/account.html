@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% from 'macros.html' import csrf,field with context %}
+{% block content %}<div class="page-heading">
+<div>
+<h1>Your account</h1>
+<p class="muted">Your details appear on future invoices.</p>
+</div>
+</div>
+<form class="card form-card narrow" method="post">{{ csrf() }}{{ field('name','Full name',value=g.user.name) }}<label class="field">Email<input value="{{ g.user.email }}" disabled>
+</label>
+<label class="field">Billing address<textarea name="address" maxlength="1000" rows="4">{{ request.form.get('address',g.user.address) }}</textarea>
+</label>
+<button class="button">Save account</button>
+<p>
+<a href="{{ url_for('auth.forgot_password') }}">Request a password reset →</a>
+</p>
+</form>{% endblock %}

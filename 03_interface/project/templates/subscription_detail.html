@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+{% from 'macros.html' import csrf,badge,field with context %}
+{% block content %}
+<div class="page-heading">
+<div>
+<a class="back-link" href="{{ url_for('subscriptions.list_subscriptions') }}">← Subscriptions</a>
+<h1>{{ title }} {{ badge(sub.status) }}</h1>
+<p class="muted">{{ customer.name }} · {{ sub.plan_name }} · {{ sub.interval|title }} billing</p>
+</div>
+</div>
+<div class="stage-track">{% for stage in ['Draft','Quotation','Confirmed','Active','Closed'] %}<span class="{{ 'current' if stage==sub.status }}">{{ loop.index }} <b>{{ stage }}</b>
+</span>{% endfor %}</div>
+<section class="card form-card">
+<div class="detail-grid">
+<div>
+<small>Customer</small>
+<strong>{{ customer.name }}</strong>
+<span>{{ customer.email }}</span>
+</div>
+<div>
+<small>Term</small>
+<strong>{{ sub.start_date }} → {{ sub.expiry_date }}</strong>
+<span>Quotation valid until {{ sub.quote_until }}</span>
+</div>
+<div>
+<small>Payment terms</small>
+<strong>{{ sub.payment_days }} days from billing</strong>
+<span>Next scheduled date: {{ sub.next_billing }}</span>
+</div>
+</div>
+<div class="actions">
+{% if g.user.role!='customer' %}
+{% for act,label,stage in [('quote','Send to quotation','Draft'),('confirm','Confirm quotation','Quotation'),('activate','Activate subscription','Confirmed')] %}
+{% if sub.status==stage %}<form method="post" action="{{ url_for('subscriptions.action',subscription_id=sub.id,action=act) }}">{{ csrf() }}<button class="button">{{ label }} →</button>
+</form>{% endif %}
+{% endfor %}
+{% endif %}
+{% if plan.allow_pause and sub.status in ['Active','Paused'] %}<form method="post" action="{{ url_for('subscriptions.action',subscription_id=sub.id,action='pause' if sub.status=='Active' else 'resume') }}">{{ csrf() }}<button class="button secondary">{{ 'Pause' if sub.status=='Active' else 'Resume' }} subscription</button>
+</form>{% endif %}
+{% if plan.allow_close and sub.status!='Closed' %}<details class="danger-details">
+<summary>Close subscription</summary>
+<p>Stop future billing. Existing invoices remain payable.</p>
+<form method="post" action="{{ url_for('subscriptions.action',subscription_id=sub.id,action='close') }}">{{ csrf() }}<button class="button danger">Confirm closure</button>
+</form>
+</details>{% endif %}</div>
+{% if sub.status=='Paused' %}<p class="notice">Billing is paused. Resuming starts a fresh cycle on the later of today or the previously scheduled date. Paused time is not billed.</p>{% endif %}
+{% if sub.expiry_date<today and sub.status=='Active' %}<p class="notice">The term has ended. No new periods beyond expiry will be billed. Run billing to settle any earlier periods, then renew or close.</p>{% endif %}
+<hr>
+<h2>Recurring product lines</h2>{% if sub.status in ['Draft','Quotation','Active','Paused'] %}<p>
+<a class="text-link" href="{{ url_for('subscriptions.edit_products',subscription_id=sub.id) }}">Update products & add-ons →</a>
+</p>{% endif %}<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Product</th>
+<th>Quantity</th>
+<th class="numeric">Unit price</th>
+<th class="numeric">Tax rate</th>
+<th class="numeric">Before tax</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>{{ sub.plan_name }} · plan fee</td>
+<td>1</td>
+<td class="numeric">{{ sub.plan_price|money }}</td>
+<td class="numeric">Plan tax rule</td>
+<td class="numeric">{{ sub.plan_price|money }}</td>
+</tr>{% for line in lines %}<tr>
+<td>{{ line.description }}</td>
+<td>{{ line.quantity }}</td>
+<td class="numeric">{{ line.unit_price|money }}</td>
+<td class="numeric">{{ line.rate/100 }}%</td>
+<td class="numeric">{{ (line.quantity*line.unit_price)|money }}</td>
+</tr>{% endfor %}</tbody>
+</table>
+</div>
+<p class="help">Eligible discounts and tax are calculated at billing time. Prices are saved on this subscription.</p>
+</section>
+{% if plan.allow_renew and sub.status in ['Active','Paused','Closed'] %}<details class="card renewal">
+<summary>Renew for another term</summary>
+<form method="post" action="{{ url_for('subscriptions.action',subscription_id=sub.id,action='renew') }}">{{ csrf() }}<p class="help">Creates a new draft after the old term ends. The team reviews it before activation. Each term can be renewed once.</p>
+<div class="form-grid">{{ field('start_date','New start date','date') }}{{ field('expiry_date','New expiry date','date') }}</div>
+<button class="button">Create renewal draft</button>
+</form>
+</details>{% endif %}
+<section class="card">
+<div class="card-heading">
+<h2>Invoice history</h2>
+</div>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Invoice</th>
+<th>Billing date</th>
+<th>Status</th>
+<th class="numeric">Total</th>
+</tr>
+</thead>
+<tbody>{% for bill in bills if g.user.role!='customer' or bill.status!='Draft' %}<tr>
+<td>
+<a href="{{ url_for('invoices.detail',invoice_id=bill.id) }}">INV-{{ '%04d'|format(bill.id) }}</a>
+</td>
+<td>{{ bill.billing_date }}</td>
+<td>{{ badge(bill.status) }}</td>
+<td class="numeric">{{ bill.total|money }}</td>
+</tr>{% else %}<tr>
+<td colspan="4" class="empty">No invoices to show yet.</td>
+</tr>{% endfor %}</tbody>
+</table>
+</div>
+</section>{% endblock %}

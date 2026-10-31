@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% from 'macros.html' import csrf,product_lines with context %}
+{% block content %}<div class="page-heading">
+<div>
+<a class="back-link" href="{{ url_for('subscriptions.detail',subscription_id=sub.id) }}">← SUB-{{ '%04d'|format(sub.id) }}</a>
+<h1>Update products & add-ons</h1>
+<p class="muted">Changes apply to the next invoice. Existing invoices are preserved.</p>
+</div>
+</div>
+<form method="post" class="card form-card">{{ csrf() }}<p class="notice">Enter the complete new set of product lines below. Existing lines will be replaced using current catalog prices. There is no mid-cycle charge or refund.</p>
+<h2>Current selection</h2>{% for line in lines %}<p>{{ line.description }} × {{ line.quantity }} · {{ line.unit_price|money }} each</p>{% endfor %}<hr>{{ product_lines(choices) }}<button class="button">Save product selection</button>
+</form>{% endblock %}

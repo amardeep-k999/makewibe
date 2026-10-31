@@ -1,0 +1,7 @@
+{% extends 'base.html' %}
+{% block content %}<div class="error-card">
+<span class="eyebrow">LET’S GET YOU BACK ON TRACK</span>
+<h1>{{ title }}</h1>
+<p>{{ message }}</p>
+<a class="button" href="{{ url_for('reports.dashboard') }}">Back to overview →</a>
+</div>{% endblock %}

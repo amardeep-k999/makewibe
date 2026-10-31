@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% from 'macros.html' import stats_cards with context %}
+{% block content %}<div class="page-heading">
+<div>
+<p class="eyebrow">THE NUMBERS, WITHOUT THE SPREADSHEET</p>
+<h1>Reports & payments</h1>
+<p class="muted">Follow collections, unpaid balances and the customers behind them.</p>
+</div>
+<a class="button secondary" href="{{ url_for('reports.export',start=start,end=end,customer_id=customer_id or '') }}">↓ Export payments CSV</a>
+</div>
+<form class="filter-bar card" method="get">
+<label class="field">From<input type="date" name="start" value="{{ start }}" required>
+</label>
+<label class="field">To<input type="date" name="end" value="{{ end }}" required>
+</label>
+<label class="field">Customer<select name="customer_id">
+<option value="">All customers</option>{% for customer in customers %}<option value="{{ customer.id }}" {{ 'selected' if customer_id==customer.id|string }}>{{ customer.name }}</option>{% endfor %}</select>
+</label>
+<button class="button">Apply filters</button>
+</form>{{ stats_cards(stats,'Collected in date range') }}<p class="help">The date range filters received payments. Active subscriptions, outstanding and overdue balances are current snapshots for the selected customer. Collections include tax and are cash received, not accounting revenue recognition.</p>
+<div class="form-grid">
+<section class="stat card">
+<div class="stat-label">Invoiced sales in date range</div>
+<strong>{{ stats.sales|money }}</strong>
+<small>Confirmed + paid invoices, after discount, excluding tax.</small>
+</section>
+<section class="stat card">
+<div class="stat-label">Estimated monthly recurring revenue</div>
+<strong>{{ stats.mrr|money }}</strong>
+<small>Active contracts before tax and discounts. Annual ÷ 12; weekly × 52 ÷ 12; daily × 365 ÷ 12.</small>
+</section>
+</div>
+<section class="card">
+<div class="card-heading">
+<h2>Received payments</h2>
+<span class="chip">Latest 100 · CSV up to 5,000</span>
+</div>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Payment</th>
+<th>Customer</th>
+<th>Invoice</th>
+<th>Date</th>
+<th>Method</th>
+<th class="numeric">Amount</th>
+</tr>
+</thead>
+<tbody>{% for payment in rows %}<tr>
+<td>PAY-{{ '%04d'|format(payment.id) }}</td>
+<td>{{ payment.customer_name }}</td>
+<td>
+<a href="{{ url_for('invoices.detail',invoice_id=payment.invoice_id) }}">INV-{{ '%04d'|format(payment.invoice_id) }}</a>
+</td>
+<td>{{ payment.payment_date }}</td>
+<td>{{ payment.method }}</td>
+<td class="numeric strong">{{ payment.amount|money }}</td>
+</tr>{% else %}<tr>
+<td colspan="6" class="empty">No payments in this date range.</td>
+</tr>{% endfor %}</tbody>
+</table>
+</div>
+</section>{% endblock %}

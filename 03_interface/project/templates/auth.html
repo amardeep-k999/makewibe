@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% from 'macros.html' import csrf,field with context %}
+{% block content %}<div class="auth-layout">
+<section class="auth-story">
+<a class="brand" href="/"> <span class="brand-mark">b</span> brightloop.</a>
+<div>
+<span class="eyebrow">A LITTLE LESS ADMIN. A LOT MORE CLARITY.</span>
+<h1>Good business<br>comes around.</h1>
+<p>Bring your subscriptions, invoices and payments into one clear view.</p>
+<div class="orbit-art" aria-hidden="true">
+<div class="orbit one">
+</div>
+<div class="orbit two">
+</div>
+<div class="orbit three">
+</div>
+<span class="orbit-label">Every cycle, connected.</span>
+</div>
+</div>
+<small>Built for the way subscription businesses work.</small>
+</section>
+<section class="auth-panel">
+<span class="eyebrow">YOUR BRIGHTLOOP WORKSPACE</span>
+<h2>{{ title }}</h2>
+<p class="muted">{{ 'Start managing your subscriptions in one place.' if mode=='signup' else 'A clearer view of your business starts here.' }}</p>
+<form method="post" class="form-stack">{{ csrf() }}
+{% if mode=='signup' %}{{ field('name','Full name') }}{% endif %}
+{% if mode!='reset' %}{{ field('email','Email address','email') }}{% endif %}
+{% if mode!='forgot' %}{{ field('password','Password','password') }}{% if mode in ['signup','reset'] %}<small>9–128 characters, including uppercase, lowercase and a special character.</small>{% endif %}
+{% endif %}
+{% if mode=='signup' %}<label class="field">Billing address (optional)<textarea name="address" rows="2" maxlength="1000">{{ request.form.get('address','') }}</textarea>
+</label>{% endif %}
+<button class="button">{{ {'login':'Sign in →','signup':'Create account →','forgot':'Send reset link','reset':'Set new password'}[mode] }}</button>
+</form>
+{% if mode=='login' %}<a class="text-link" href="{{ url_for('auth.forgot_password') }}">Forgot password?</a>
+<div class="auth-bottom">New to Brightloop? <a href="{{ url_for('auth.signup') }}">Create an account</a>
+</div>
+<details class="demo-access">
+<summary>Try the demo workspace</summary>
+<p>Admin: <b>admin@brightloop.demo</b>
+<br>Staff: <b>staff@brightloop.demo</b>
+<br>Customer: <b>customer@brightloop.demo</b>
+<br>Password: <b>Brightloop!2026</b>
+</p>
+<small>Available after running the demo seed command. Sample records only.</small>
+</details>{% else %}<a class="text-link" href="{{ url_for('auth.login') }}">← Back to sign in</a>{% endif %}
+</section>
+</div>{% endblock %}

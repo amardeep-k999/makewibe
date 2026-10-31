@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% from 'macros.html' import csrf,badge,pagination with context %}
+{% block content %}
+<div class="page-heading">
+<div>
+<p class="eyebrow">FROM BILLING TO BALANCE</p>
+<h1>Invoices</h1>
+<p class="muted">Every line item accounted for. Every payment in its place.</p>
+</div>{% if g.user.role!='customer' %}<form method="post" action="{{ url_for('invoices.billing_run') }}">{{ csrf() }}<button class="button">↻ Run due billing</button>
+</form>{% endif %}</div>
+<section class="card">
+<form class="filter-bar" method="get">
+<input name="q" aria-label="Search invoices" placeholder="Search customer or invoice number…" value="{{ query }}">
+<select name="status" aria-label="Invoice status">
+<option value="">All statuses</option>{% for item in ['Draft','Confirmed','Paid','Cancelled','Overdue'] %}
+{% if item!='Draft' or g.user.role!='customer' %}<option {{ 'selected' if status==item }}>{{ item }}</option>{% endif %}
+{% endfor %}</select>
+<button class="button secondary">Filter</button>
+<a href="{{ url_for('invoices.list_invoices') }}">Clear</a>
+</form>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Invoice</th>
+<th>Customer</th>
+<th>Due date</th>
+<th>Status</th>
+<th class="numeric">Total</th>
+<th class="numeric">Balance</th>
+<th>
+</th>
+</tr>
+</thead>
+<tbody>{% for bill in rows %}<tr>
+<td>
+<a class="strong-link" href="{{ url_for('invoices.detail',invoice_id=bill.id) }}">INV-{{ '%04d'|format(bill.id) }}</a>
+</td>
+<td>{{ bill.customer_name }}</td>
+<td>{{ bill.due_date }}</td>
+<td>{{ badge('Overdue' if bill.status=='Confirmed' and bill.due_date<today else bill.status) }}</td>
+<td class="numeric">{{ bill.total|money }}</td>
+<td class="numeric strong">{{ '—' if bill.status in ['Cancelled','Draft'] else (bill.total-bill.paid)|money }}</td>
+<td>
+<a href="{{ url_for('invoices.detail',invoice_id=bill.id) }}">View →</a>
+</td>
+</tr>{% else %}<tr>
+<td colspan="7" class="empty">No invoices found. Active subscriptions produce invoices when billing runs.</td>
+</tr>{% endfor %}</tbody>
+</table>
+</div>{{ pagination('invoices.list_invoices',page,total,status,query) }}</section>{% endblock %}

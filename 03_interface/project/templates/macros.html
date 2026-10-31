@@ -1,0 +1,49 @@
+{% macro csrf() %}<input type="hidden" name="csrf" value="{{ csrf_token }}">{% endmacro %}
+{% macro badge(status) %}<span class="badge {{ status|lower }}">{{ status }}</span>{% endmacro %}
+{% macro field(name,label,type='text',value='',required=true,step='',min='',max='') %}
+<label class="field">{{ label }}<input name="{{ name }}" type="{{ type }}" value="{{ request.form.get(name,value) if type!='password' else '' }}" {{ 'required' if required }} {% if step %}step="{{ step }}"{% endif %} {% if min!='' %}min="{{ min }}"{% endif %} {% if max!='' %}max="{{ max }}"{% endif %}>
+</label>
+{% endmacro %}
+{% macro picker(name,label,items,optional=true) %}
+<label class="field">{{ label }}<select name="{{ name }}" {{ '' if optional else 'required' }}>
+<option value="">{{ 'None / all' if optional else 'Choose…' }}</option>{% for item in items %}<option value="{{ item.id }}" {{ 'selected' if request.form.get(name)==item.id|string }}>{{ item.name if item.name is defined else 'SUB-%04d'|format(item.id) }}{% if item.extra_price is defined %} (+{{ item.extra_price|money }}){% endif %}</option>{% endfor %}</select>
+</label>
+{% endmacro %}
+{% macro product_lines(choices) %}
+<p class="help">Choose up to five product lines. A variant must belong to its selected product. Prices are copied from the catalog.</p>
+{% for index in range(5) %}<div class="line-inputs">{{ picker('product_'~index,'Product '~(index+1),choices.products) }}{{ picker('variant_'~index,'Variant',choices.variants) }}{{ field('quantity_'~index,'Quantity','number',1,min=1,max=10000) }}</div>{% endfor %}
+{% endmacro %}
+{% macro pagination(endpoint,page,total,status='',query='') %}<div class="pagination">
+<span>{{ total }} records · Page {{ page }}</span>
+<div>{% if page>1 %}<a class="button secondary small" href="{{ url_for(endpoint,page=page-1,status=status,q=query) }}">← Previous</a>{% endif %}
+{% if page*20<total %}<a class="button secondary small" href="{{ url_for(endpoint,page=page+1,status=status,q=query) }}">Next →</a>{% endif %}</div>
+</div>{% endmacro %}
+{% macro stats_cards(stats,label='Collected this month') %}
+<div class="stats-grid">
+<article class="stat">
+<div class="stat-label">Active subscriptions <span class="stat-icon purple">↻</span>
+</div>
+<strong>{{ stats.active }}</strong>
+<small>
+<span class="tiny-dot purple-dot">
+</span> Within their current term</small>
+</article>
+<article class="stat">
+<div class="stat-label">{{ label }} <span class="stat-icon green">↗</span>
+</div>
+<strong>{{ stats.collected|money }}</strong>
+<small>Payments received</small>
+</article>
+<article class="stat">
+<div class="stat-label">Outstanding balance <span class="stat-icon orange">▤</span>
+</div>
+<strong>{{ stats.outstanding|money }}</strong>
+<small>Across confirmed invoices</small>
+</article>
+<article class="stat">
+<div class="stat-label">Overdue amount <span class="stat-icon red">◷</span>
+</div>
+<strong>{{ stats.overdue|money }}</strong>
+<small>{{ stats.overdue_count }} invoices need attention</small>
+</article>
+</div>{% endmacro %}

@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% from 'macros.html' import badge,pagination with context %}
+{% block content %}
+<div class="page-heading">
+<div>
+<p class="eyebrow">EVERY CUSTOMER. EVERY CYCLE.</p>
+<h1>Subscriptions</h1>
+<p class="muted">From first quotation to the next renewal.</p>
+</div>
+<a class="button" href="{{ url_for('subscriptions.new_subscription') }}">+ New subscription</a>
+</div>
+<section class="card">
+<form class="filter-bar" method="get">
+<input aria-label="Search subscriptions" name="q" placeholder="Search customer, plan or number…" value="{{ query }}">
+<select aria-label="Subscription status" name="status">
+<option value="">All statuses</option>{% for item in ['Draft','Quotation','Confirmed','Active','Paused','Closed'] %}<option {{ 'selected' if status==item }}>{{ item }}</option>{% endfor %}</select>
+<button class="button secondary">Filter</button>
+<a href="{{ url_for('subscriptions.list_subscriptions') }}">Clear</a>
+</form>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Subscription</th>
+<th>Customer</th>
+<th>Plan</th>
+<th>Next billing</th>
+<th>Status</th>
+<th>
+</th>
+</tr>
+</thead>
+<tbody>{% for sub in rows %}<tr>
+<td>
+<a class="strong-link" href="{{ url_for('subscriptions.detail',subscription_id=sub.id) }}">SUB-{{ '%04d'|format(sub.id) }}</a>
+</td>
+<td>{{ sub.customer_name }}</td>
+<td>{{ sub.plan_name }}<small>{{ sub.interval }}</small>
+</td>
+<td>{{ sub.next_billing if sub.status=='Active' and sub.next_billing<=sub.expiry_date else '—' }}</td>
+<td>{{ badge(sub.status) }}</td>
+<td>
+<a href="{{ url_for('subscriptions.detail',subscription_id=sub.id) }}">View →</a>
+</td>
+</tr>{% else %}<tr>
+<td colspan="6" class="empty">No subscriptions found. Create your first one or clear the filters.</td>
+</tr>{% endfor %}</tbody>
+</table>
+</div>{{ pagination('subscriptions.list_subscriptions',page,total,status,query) }}</section>{% endblock %}

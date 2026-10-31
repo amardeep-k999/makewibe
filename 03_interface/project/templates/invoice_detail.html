@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+{% from 'macros.html' import csrf,badge,field with context %}
+{% block content %}
+<div class="page-heading no-print">
+<div>
+<a class="back-link" href="{{ url_for('invoices.list_invoices') }}">← Invoices</a>
+<h1>{{ title }} {{ badge(invoice.status) }}</h1>
+</div>
+<div class="actions">
+<a class="button secondary" href="{{ url_for('invoices.detail',invoice_id=invoice.id,print=1) }}">Print view</a>{% if g.user.role!='customer' %}
+{% if invoice.status=='Draft' %}<form method="post" action="{{ url_for('invoices.action',invoice_id=invoice.id,action='confirm') }}">{{ csrf() }}<button class="button">Confirm invoice</button>
+</form>{% endif %}
+{% if invoice.status in ['Confirmed','Paid'] %}<form method="post" action="{{ url_for('invoices.action',invoice_id=invoice.id,action='send') }}">{{ csrf() }}<button class="button secondary">Send invoice</button>
+</form>{% endif %}
+{% endif %}</div>
+</div>
+{% if printing %}<div class="notice no-print">Use your browser’s Print command (Ctrl+P) to print or save as PDF. <a href="{{ url_for('invoices.detail',invoice_id=invoice.id) }}">Return to invoice</a>
+</div>{% endif %}
+<article class="card invoice-paper">
+<div class="invoice-letterhead">
+<div>
+<a class="brand" href="/"> <span class="brand-mark">b</span> brightloop.</a>
+<p>Brightloop Software<br>Subscription services</p>
+</div>
+<div class="invoice-title">
+<h2>INVOICE</h2>
+<strong>{{ title }}</strong>
+<p>{{ badge(invoice.status) }}</p>
+</div>
+</div>
+<div class="invoice-address">
+<div>
+<span class="eyebrow">BILL TO</span>
+<h3>{{ invoice.customer_name }}</h3>
+<p>{{ invoice.customer_email }}<br>{{ invoice.customer_address }}</p>
+</div>
+<dl>
+<dt>Billing date</dt>
+<dd>{{ invoice.billing_date }}</dd>
+<dt>Due date</dt>
+<dd>{{ invoice.due_date }}</dd>
+<dt>Subscription</dt>
+<dd>
+<a href="{{ url_for('subscriptions.detail',subscription_id=invoice.subscription_id) }}">SUB-{{ '%04d'|format(invoice.subscription_id) }}</a>
+</dd>
+<dt>Currency</dt>
+<dd>INR</dd>
+</dl>
+</div>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Description</th>
+<th>Qty</th>
+<th class="numeric">Unit price</th>
+<th class="numeric">Discount</th>
+<th class="numeric">Tax</th>
+<th class="numeric">Total</th>
+</tr>
+</thead>
+<tbody>{% for line in lines %}<tr>
+<td>{{ line.description }}</td>
+<td>{{ line.quantity }}</td>
+<td class="numeric">{{ line.unit_price|money }}</td>
+<td class="numeric">{{ line.discount|money }}</td>
+<td class="numeric">{{ line.tax|money }}<small>{{ line.tax_rate/100 }}%</small>
+</td>
+<td class="numeric strong">{{ line.total|money }}</td>
+</tr>{% endfor %}</tbody>
+</table>
+</div>
+<div class="invoice-totals">
+<dl>
+<dt>Subtotal</dt>
+<dd>{{ invoice.subtotal|money }}</dd>
+<dt>Discount</dt>
+<dd>−{{ invoice.discount|money }}</dd>
+<dt>Tax</dt>
+<dd>{{ invoice.tax|money }}</dd>
+<dt class="grand-total">Invoice total</dt>
+<dd class="grand-total">{{ invoice.total|money }}</dd>{% if invoice.status not in ['Cancelled','Draft'] %}<dt>Payments received</dt>
+<dd>{{ (invoice.total-balance)|money }}</dd>
+<dt class="balance">Amount due</dt>
+<dd class="balance">{{ balance|money }}</dd>{% endif %}</dl>
+</div>
+<div class="invoice-note">{% if invoice.discount_name %}<p>Applied discount: {{ invoice.discount_name }}</p>{% endif %}<p>Thank you for being part of Brightloop. {% if invoice.sent_at %}Last delivery action: {{ invoice.sent_at }} UTC.{% endif %}</p>
+</div>
+</article>
+{% if g.user.role!='customer' and invoice.status=='Confirmed' %}<section class="card form-card no-print">
+<h2>Record a received payment</h2>
+<p class="muted">Record money already received. This form does not charge a card or bank account.</p>
+<form method="post" action="{{ url_for('invoices.action',invoice_id=invoice.id,action='payment') }}">{{ csrf() }}<input type="hidden" name="request_key" value="{{ request_key }}">
+<div class="form-grid">{{ field('amount','Amount (INR)','number','%.2f'|format(balance/100),step='0.01',min='0.01',max=balance/100) }}<label class="field">Method<select name="method">{% for method in ['Bank transfer','UPI','Card','Cash','Other'] %}<option>{{ method }}</option>{% endfor %}</select>
+</label>{{ field('payment_date','Payment date','date',today,max=today) }}{{ field('note','Reference / note',required=false) }}</div>
+<button class="button">Record payment</button>
+</form>
+</section>{% endif %}
+<section class="card no-print">
+<div class="card-heading">
+<h2>Payment history</h2>
+</div>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Method</th>
+<th>Reference / note</th>
+<th class="numeric">Amount</th>
+</tr>
+</thead>
+<tbody>{% for payment in payments %}<tr>
+<td>{{ payment.payment_date }}</td>
+<td>{{ payment.method }}</td>
+<td>{{ payment.note or '—' }}</td>
+<td class="numeric">{{ payment.amount|money }}</td>
+</tr>{% else %}<tr>
+<td colspan="4" class="empty">No payments recorded yet.</td>
+</tr>{% endfor %}</tbody>
+</table>
+</div>
+</section>
+{% if g.user.role!='customer' and invoice.status in ['Draft','Confirmed'] and not payments %}<details class="danger-details no-print">
+<summary>Cancel this invoice</summary>
+<p>Cancelled invoices remain in the audit history. Billing will not recreate this period, and a consumed discount use is not restored.</p>
+<form method="post" action="{{ url_for('invoices.action',invoice_id=invoice.id,action='cancel') }}">{{ csrf() }}<button class="button danger">Confirm cancellation</button>
+</form>
+</details>{% endif %}
+{% endblock %}

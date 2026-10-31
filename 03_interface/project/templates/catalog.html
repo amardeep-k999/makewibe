@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% from 'macros.html' import csrf,field,picker,product_lines with context %}
+{% block content %}
+<div class="page-heading">
+<div>
+<p class="eyebrow">SET UP ONCE. KEEP THINGS RUNNING.</p>
+<h1>{{ 'Team members' if kind=='staff' else 'Catalog & rules' }}</h1>
+<p class="muted">{{ 'Only administrators can create staff accounts.' if kind=='staff' else 'Define the products, plans and rules behind every subscription.' }}</p>
+</div>
+</div>
+<nav class="tabs" aria-label="Catalog sections">{% for item in kinds %}<a class="{{ 'active' if kind==item }}" href="{{ url_for('catalog.manage',kind=item) }}">{{ item|title }}</a>{% endfor %}</nav>
+<div class="catalog-layout">
+<section class="card">
+<div class="card-heading">
+<h2>{{ kind|title }}</h2>
+<span class="chip">{{ rows|length }} shown</span>
+</div>
+<div class="catalog-list">{% for row in rows %}<article class="catalog-item">
+<div class="catalog-item-icon">{{ row.name[0] }}</div>
+<div>
+<h3>{{ row.name }}</h3>
+{% if kind=='products' %}<p>{{ row.type }} · Sale {{ row.sales_price|money }} · Cost {{ row.cost_price|money }}</p>
+<small>{{ row.notes }}</small>
+{% elif kind=='variants' %}<p>Product #{{ row.product_id }} · adds {{ row.extra_price|money }}</p>
+{% elif kind=='plans' %}<p>{{ row.price|money }} / {{ row.interval }} · minimum {{ row.min_quantity }} units</p>
+<small>{{ row.available_from }} → {{ row.available_to }}</small>
+<div class="rule-tags">
+<span>Auto-close {{ 'on' if row.auto_close else 'off' }}</span>
+<span>Pause {{ 'allowed' if row.allow_pause else 'off' }}</span>
+<span>Close {{ 'allowed' if row.allow_close else 'off' }}</span>
+<span>Renew {{ 'allowed' if row.allow_renew else 'off' }}</span>
+</div>
+{% elif kind=='taxes' %}<p>{{ row.rate/100 }}% tax</p>
+{% elif kind=='discounts' %}<p>{{ (row.value/100)|string~'%' if row.kind=='percent' else row.value|money }} · {{ row.uses }} / {{ row.max_uses }} uses</p>
+<small>{{ row.starts }} → {{ row.ends }} · Minimum {{ row.min_purchase|money }} / {{ row.min_quantity }} units</small>
+<small>{{ 'Product #'~row.product_id if row.product_id else 'All products + plan fee' }} · {{ 'SUB-%04d'|format(row.subscription_id) if row.subscription_id else 'All subscriptions' }}</small>
+{% elif kind=='templates' %}<p>Plan #{{ row.plan_id }} · valid for {{ row.valid_days }} days</p>
+{% elif kind=='staff' %}<p>{{ row.email }} · {{ row.role|title }}</p>{% endif %}</div>
+<span class="muted">#{{ row.id }}</span>
+</article>{% else %}<div class="empty">No {{ kind }} yet. Add your first record here.</div>{% endfor %}</div>
+</section>
+<section class="card form-card">
+<h2>Add {{ {'products':'product','variants':'variant','plans':'plan','taxes':'tax rule','discounts':'discount','templates':'quotation template','staff':'staff member'}[kind] }}</h2>
+<form method="post" class="form-stack">{{ csrf() }}{{ field('name','Name') }}
+{% if kind=='products' %}<label class="field">Product type<select name="type">
+<option>Software</option>
+<option>Service</option>
+<option>Add-on</option>
+</select>
+</label>
+<div class="form-grid">{{ field('sales_price','Sales price (INR)','number',0,step='0.01',min=0) }}{{ field('cost_price','Cost price (INR)','number',0,step='0.01',min=0) }}</div>{{ picker('tax_id','Tax rule',choices.taxes) }}<label class="field">Notes<textarea name="notes" maxlength="2000">{{ request.form.get('notes','') }}</textarea>
+</label>
+{% elif kind=='variants' %}{{ picker('product_id','Product',choices.products,false) }}{{ field('extra_price','Additional price (INR)','number',560,step='0.01',min=0) }}
+{% elif kind=='plans' %}{{ field('price','Recurring plan fee (INR)','number',0,step='0.01',min=0) }}<p class="help">Added once per billing cycle, on top of product lines.</p>
+<label class="field">Billing interval<select name="interval">{% for interval in ['daily','weekly','monthly','yearly'] %}<option {{ 'selected' if interval=='monthly' }}>{{ interval }}</option>{% endfor %}</select>
+</label>{{ field('min_quantity','Minimum total product quantity','number',1,min=1,max=10000) }}{{ picker('tax_id','Tax rule for plan fee',choices.taxes) }}{{ field('available_from','Available from','date',today) }}{{ field('available_to','Available until','date') }}{% for name,label in [('auto_close','Close automatically after expiry'),('allow_close','Allow early closure'),('allow_pause','Allow pause / resume'),('allow_renew','Allow renewal')] %}<label class="check">
+<input type="checkbox" name="{{ name }}" checked>{{ label }}</label>{% endfor %}
+{% elif kind=='taxes' %}{{ field('rate','Tax percentage','number',18,step='0.01',min=0,max=100) }}<p class="help">Configure the rule required for your demo. The sample tax is illustrative.</p>
+{% elif kind=='discounts' %}<label class="field">Discount type<select name="kind">
+<option value="percent">Percentage</option>
+<option value="fixed">Fixed amount (INR)</option>
+</select>
+</label>{{ field('value','Value (% or INR)','number',10,step='0.01',min='0.01') }}{{ field('min_purchase','Minimum eligible purchase (INR)','number',0,step='0.01',min=0) }}{{ field('min_quantity','Minimum eligible product quantity','number',1,min=1) }}{{ field('starts','Starts','date',today) }}{{ field('ends','Ends','date') }}{{ field('max_uses','Total usage limit','number',100,min=1) }}{{ picker('product_id','Apply only to product (optional)',choices.products) }}{{ picker('subscription_id','Apply only to subscription (optional)',choices.subscriptions) }}<p class="help">Blank scopes apply globally. The largest eligible discount wins; discounts do not stack. A use is consumed when an invoice is generated.</p>
+{% elif kind=='templates' %}{{ picker('plan_id','Plan',choices.plans,false) }}{{ field('valid_days','Quotation validity (days)','number',14,min=1,max=365) }}{{ product_lines(choices) }}
+{% elif kind=='staff' %}{{ field('email','Email address','email') }}{{ field('password','Initial password','password') }}<p class="help">At least 9 characters, uppercase, lowercase and a special character.</p>{% endif %}<button class="button">Save {{ {'products':'product','variants':'variant','plans':'plan','taxes':'tax','discounts':'discount','templates':'template','staff':'staff member'}[kind] }} →</button>
+</form>
+</section>
+</div>{% endblock %}
